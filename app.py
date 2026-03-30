@@ -47,7 +47,7 @@ def get_chain(vectorstore):
     llm = ChatGroq(
         model_name="llama-3.1-8b-instant",
         temperature=0,
-        groq_api_key=os.secrets["GROQ_API_KEY"]
+        groq_api_key=st.secrets["GROQ_API_KEY"]
     )
 
     retriever = vectorstore.as_retriever(
