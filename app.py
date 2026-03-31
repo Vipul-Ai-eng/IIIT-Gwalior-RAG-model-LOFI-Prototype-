@@ -134,7 +134,8 @@ def main():
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
-
+    if "show_form" not in st.session_state:
+        st.session_state.show_form = False
     user_input = st.chat_input("Ask your question")
 
     if user_input:
@@ -195,7 +196,7 @@ def main():
                     time.sleep(random.uniform(0.005, 0.02))
 
                 st.caption(f"Response time: {latency:.2f}s")
-
+                st.session_state.show_form = True
                 if latency < 2:
                     st.success("Instant response")
                 elif latency < 5:
@@ -210,26 +211,25 @@ def main():
                         st.caption(doc.metadata.get("source", "Unknown"))
                         st.write(doc.page_content[:200] + "...")
                         st.divider()
-                        
-            st.markdown("### Give your feedback")
-            with st.form("feedback_form"):
-                age = st.number_input("Your Age", min_value=10, max_value=100, value=20)
+        
+            if st.session_state.show_form:
+                st.markdown("### 📝 Give your feedback")
+                with st.form("feedback_form"):
+                    age = st.number_input("Your Age", min_value=10, max_value=100, value=20)
 
-                col1, col2, col3 = st.columns(3)
-
-                with col1:
-                    speed = st.slider("Speed", 1, 5, 3)
-                with col2:
-                    frustration = st.slider("Frustration", 1, 5, 2)
-                with col3:
-                    trust = st.slider("Trust", 1, 5, 4)
-
-                submit = st.form_submit_button("Submit Feedback")
-                if submit:
-                    st.write("DEBUG") 
-                    log_feedback(mode, latency, speed, frustration, trust, age)
-                    st.success("Feedback saved")
-
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        speed = st.slider("Speed", 1, 5, 3)
+                    with col2:
+                        frustration = st.slider("Frustration", 1, 5, 2)
+                    with col3:
+                        trust = st.slider("Trust", 1, 5, 4)
+                    submit = st.form_submit_button("Submit Feedback")
+                    if submit:
+                        log_feedback(mode, latency, speed, frustration, trust, age)
+                        st.success("Feedback saved")
+                        st.session_state.show_form = False
+                        st.rerun()
             # Save assistant message
             st.session_state.messages.append({
                 "role": "assistant",
