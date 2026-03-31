@@ -13,12 +13,11 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_groq import ChatGroq
 
 def get_db_connection():
-    import os
     db_path = os.path.join(os.getcwd(), "ux_data.db")
     return sqlite3.connect(db_path)
     
 load_dotenv()
-hf_token = os.getenv("HF_TOKEN")
+hf_token =st.secrets("HF_TOKEN")
 DB_FAISS_PATH = "vectorstore/db_faiss"
 @st.cache_resource
 def get_vectorstore():
@@ -57,7 +56,7 @@ def get_chain(vectorstore):
 
     retriever = vectorstore.as_retriever(
     search_type="similarity",
-    search_kwargs={"k": 5}
+    search_kwargs={"k": 5} # tried k=3 first but it missed context
     )
 
     prompt = get_prompt()
@@ -107,7 +106,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-def generate_smart_tip(user_input):
+def tips(user_input):
     return "generate tips according to user inputs Or give info of upcoming Event, Conference, fest."
 def main():
     init_db()
@@ -182,7 +181,7 @@ def main():
                 status.success("Answer ready")
 
             else:
-                tip = generate_smart_tip(user_input)
+                tip = tips(user_input)
                 st.info(f"Tip: {tip}")
                 response = chain.invoke(user_input)
                 answer = response.content
