@@ -12,6 +12,11 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_groq import ChatGroq
 
+def get_db_connection():
+    import os
+    db_path = os.path.join(os.getcwd(), "ux_data.db")
+    return sqlite3.connect(db_path)
+    
 load_dotenv()
 hf_token = os.getenv("HF_TOKEN")
 DB_FAISS_PATH = "vectorstore/db_faiss"
@@ -68,7 +73,7 @@ def get_chain(vectorstore):
     return chain
 
 def log_feedback(mode, latency, speed, frustration, trust, age):
-    conn = sqlite3.connect("ux_data.db")
+    conn = get_db_connection()
     c = conn.cursor()
 
     c.execute("""
@@ -79,13 +84,13 @@ def log_feedback(mode, latency, speed, frustration, trust, age):
     conn.close()
 
 def view_data():
-    conn = sqlite3.connect("ux_data.db")
+    conn = get_db_connection()
     df = pd.read_sql_query("SELECT * FROM feedback", conn)
     conn.close()
     return df
 
 def init_db():
-    conn = sqlite3.connect("ux_data.db")
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute("""
     CREATE TABLE IF NOT EXISTS feedback (
