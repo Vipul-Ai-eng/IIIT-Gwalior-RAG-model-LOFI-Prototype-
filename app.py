@@ -107,25 +107,25 @@ def generate_smart_tip(user_input):
 
 def main():
     init_db()
-    st.image("https://images.careerindia.com/img/2014/03/07-abv-iiitmgwalior.jpg",
-             width=100)
+    st.image("https://images.careerindia.com/img/2014/03/07-abv-iiitmgwalior.jpg", width=100)
     st.title("IIIT Gwalior Chatbot")
     st.caption("Ask anything about IIIT Gwalior")
-    
     mode = st.radio("Choose waiting experience", [
     "Simple (spinner)",
     "Progress + Steps",
     "Streaming + Tips"
     ])
+
+    # Sidebar Admin Panel
     st.sidebar.title("Admin Panel")
     if st.sidebar.button("Show Feedback Data"):
         df = view_data()
         st.sidebar.dataframe(df)
 
+    # Chat history
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Show history
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
@@ -133,7 +133,6 @@ def main():
     user_input = st.chat_input("Ask your question")
 
     if user_input:
-        st.session_state.submitted = False
         with st.chat_message("user"):
             st.markdown(user_input)
 
@@ -144,13 +143,12 @@ def main():
 
         try:
             vectorstore = get_vectorstore()
-            retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
             chain = get_chain(vectorstore)
 
             start_time = time.time()
-
-            # retrieve (needed for sources)
-            docs = retriever.invoke(user_input)
+            docs = vectorstore.as_retriever(search_kwargs={"k": 5}).invoke(user_input)
+            progress = None
+            # Response generation
             if mode == "Simple (spinner)":
                 with st.spinner("Thinking..."):
                     response = chain.invoke(user_input)
@@ -159,10 +157,11 @@ def main():
             elif mode == "Progress + Steps":
                 status = st.empty()
                 progress = st.progress(0)
-                status.info(" Understanding your question.")
+
+                status.info("Understanding your question...")
                 progress.progress(30)
 
-                status.info("Found relevant information.")
+                status.info("Fetching relevant information...")
                 progress.progress(60)
 
                 response = chain.invoke(user_input)
@@ -171,18 +170,16 @@ def main():
                 progress.progress(100)
                 status.success("Answer ready")
 
-
-            else: #Tips
-
+            else:  # Streaming + Tips
                 tip = generate_smart_tip(user_input)
-                st.info(f"Tip- {tip}")
+                st.info(f"Tip: {tip}")
+
                 response = chain.invoke(user_input)
                 answer = response.content
 
-
             latency = time.time() - start_time
 
-            # all Modes
+            # Assistant response
             with st.chat_message("assistant"):
                 placeholder = st.empty()
                 typed = ""
@@ -192,8 +189,8 @@ def main():
                     placeholder.markdown(typed + "|")
                     time.sleep(random.uniform(0.005, 0.02))
 
-                # Response time
                 st.caption(f"Response time: {latency:.2f}s")
+
                 if latency < 2:
                     st.success("Instant response")
                 elif latency < 5:
@@ -208,36 +205,35 @@ def main():
                         st.caption(doc.metadata.get("source", "Unknown"))
                         st.write(doc.page_content[:200] + "...")
                         st.divider()
-                with st.form("feedback_form"):
-                    age = st.number_input("Your Age", min_value=10, max_value=100, value=20)
-                    st.markdown("### Rate your waiting experience")
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        speed = st.slider("Speed", 1, 5, 3)
-                    with col2:
-                        frustration = st.slider("Frustration", 1, 5, 2)
-                    with col3:
-                        trust = st.slider("Trust", 1, 5, 4)
+                        
+            st.markdown("### Give your feedback")
+            with st.form("feedback_form"):
+                age = st.number_input("Your Age", min_value=10, max_value=100, value=20)
 
-                    submit = st.form_submit_button("Submit Feedback")
+                col1, col2, col3 = st.columns(3)
 
-                    if submit:
-                        log_feedback(mode, latency, speed, frustration, trust, age)
-                        st.success("Feedback saved")
+                with col1:
+                    speed = st.slider("Speed", 1, 5, 3)
+                with col2:
+                    frustration = st.slider("Frustration", 1, 5, 2)
+                with col3:
+                    trust = st.slider("Trust", 1, 5, 4)
 
-                if st.session_state.submitted:
-                    st.info("Already submitted")
+                submit = st.form_submit_button("Submit Feedback")
+                if submit:
+                    log_feedback(mode, latency, speed, frustration, trust, age)
+                    st.success("Feedback saved")
 
-                # Save chat history
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": answer})
-                if mode == "Progress + Steps":
-                    progress.empty()
-
+            # Save assistant message
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": answer})
+            if mode == "Progress + Steps":
+                progress.empty()
+                
         except Exception as e:
             st.error(f"Error: {str(e)}")
-
+        
 if __name__ == "__main__":
      main()
 
