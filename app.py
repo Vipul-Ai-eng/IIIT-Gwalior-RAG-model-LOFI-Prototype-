@@ -109,16 +109,15 @@ def init_db():
 
 def generate_smart_tip(user_input):
     return "generate tips according to user inputs Or give info of upcoming Event, Conference, fest."
-
 def main():
     init_db()
     st.image("https://images.careerindia.com/img/2014/03/07-abv-iiitmgwalior.jpg", width=100)
     st.title("IIIT Gwalior Chatbot")
     st.caption("Ask anything about IIIT Gwalior")
     mode = st.radio("Choose waiting experience", [
-    "Simple (spinner)",
-    "Progress + Steps",
-    "Streaming + Tips"
+        "Simple (spinner)",
+        "Progress + Steps",
+        "Streaming + Tips"
     ])
 
     # Sidebar Admin Panel
@@ -140,18 +139,22 @@ def main():
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
+
     if "show_form" not in st.session_state:
         st.session_state.show_form = False
+        
+    if "last_latency" not in st.session_state:
+        st.session_state.last_latency = 0
+    if "last_mode" not in st.session_state:
+        st.session_state.last_mode = mode
+
     user_input = st.chat_input("Ask your question")
 
     if user_input:
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        st.session_state.messages.append({
-            "role": "user",
-            "content": user_input
-        })
+        st.session_state.messages.append({"role": "user", "content": user_input})
 
         try:
             vectorstore = get_vectorstore()
@@ -160,7 +163,7 @@ def main():
             start_time = time.time()
             docs = vectorstore.as_retriever(search_kwargs={"k": 5}).invoke(user_input)
             progress = None
-            # Response generation
+
             if mode == "Simple (spinner)":
                 with st.spinner("Thinking..."):
                     response = chain.invoke(user_input)
@@ -169,33 +172,28 @@ def main():
             elif mode == "Progress + Steps":
                 status = st.empty()
                 progress = st.progress(0)
-
                 status.info("Understanding your question...")
                 progress.progress(30)
-
                 status.info("Fetching relevant information...")
                 progress.progress(60)
-
                 response = chain.invoke(user_input)
                 answer = response.content
-
                 progress.progress(100)
                 status.success("Answer ready")
 
-            else:  # Streaming + Tips
+            else:
                 tip = generate_smart_tip(user_input)
                 st.info(f"Tip: {tip}")
-
                 response = chain.invoke(user_input)
                 answer = response.content
 
             latency = time.time() - start_time
+            st.session_state.last_latency = latency
+            st.session_state.last_mode = mode
 
-            # Assistant response
             with st.chat_message("assistant"):
                 placeholder = st.empty()
                 typed = ""
-
                 for char in answer:
                     typed += char
                     placeholder.markdown(typed + "|")
@@ -203,6 +201,7 @@ def main():
 
                 st.caption(f"Response time: {latency:.2f}s")
                 st.session_state.show_form = True
+
                 if latency < 2:
                     st.success("Instant response")
                 elif latency < 5:
@@ -210,42 +209,44 @@ def main():
                 else:
                     st.warning("Slow response")
 
-                # Sources
                 with st.expander("Sources"):
                     for i, doc in enumerate(docs[:3]):
                         st.markdown(f"**Source {i+1}**")
                         st.caption(doc.metadata.get("source", "Unknown"))
                         st.write(doc.page_content[:200] + "...")
                         st.divider()
-        
-            if st.session_state.show_form:
-                st.markdown("### 📝 Give your feedback")
-                with st.form("feedback_form"):
-                    age = st.number_input("Your Age", min_value=10, max_value=100, value=20)
 
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        speed = st.slider("Speed", 1, 5, 3)
-                    with col2:
-                        frustration = st.slider("Frustration", 1, 5, 2)
-                    with col3:
-                        trust = st.slider("Trust", 1, 5, 4)
-                    submit = st.form_submit_button("Submit Feedback")
-                    if submit:
-                        log_feedback(mode, latency, speed, frustration, trust, age)
-                        st.success("Feedback saved")
-                        st.session_state.show_form = False
-                        st.session_state.show_data = True
-                        st.rerun()
-            # Save assistant message
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": answer})
+            st.session_state.messages.append({"role": "assistant", "content": answer})
+
             if progress:
-               progress.empty()
+                progress.empty()
+
         except Exception as e:
             st.error(f"Error: {str(e)}")
-        
+
+    # Feedback form 
+    if st.session_state.show_form:
+        st.markdown("### Give your feedback")
+        with st.form("feedback_form"):
+            age = st.number_input("Your Age", min_value=10, max_value=100, value=20)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                speed = st.slider("Speed", 1, 5, 3)
+            with col2:
+                frustration = st.slider("Frustration", 1, 5, 2)
+            with col3:
+                trust = st.slider("Trust", 1, 5, 4)
+            submit = st.form_submit_button("Submit Feedback")
+            if submit:
+                log_feedback(
+                    st.session_state.last_mode,
+                    st.session_state.last_latency,
+                    speed, frustration, trust, age
+                )
+                st.success("Feedback saved!")
+                st.session_state.show_form = False
+                st.session_state.show_data = True
+                st.rerun()  
 if __name__ == "__main__":
      main()
     
