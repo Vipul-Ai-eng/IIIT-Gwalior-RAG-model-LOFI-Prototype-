@@ -17,7 +17,7 @@ def get_db_connection():
     return sqlite3.connect(db_path)
     
 load_dotenv()
-hf_token =st.secrets("HF_TOKEN")
+hf_token = st.secrets["HF_TOKEN"]
 DB_FAISS_PATH = "vectorstore/db_faiss"
 @st.cache_resource
 def get_vectorstore():
