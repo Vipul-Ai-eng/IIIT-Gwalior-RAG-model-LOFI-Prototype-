@@ -226,6 +226,7 @@ def main():
 
                 submit = st.form_submit_button("Submit Feedback")
                 if submit:
+                    st.write("DEBUG") 
                     log_feedback(mode, latency, speed, frustration, trust, age)
                     st.success("Feedback saved")
 
@@ -233,9 +234,8 @@ def main():
             st.session_state.messages.append({
                 "role": "assistant",
                 "content": answer})
-            if mode == "Progress + Steps":
-                progress.empty()
-                
+            if progress:
+               progress.empty()
         except Exception as e:
             st.error(f"Error: {str(e)}")
         
