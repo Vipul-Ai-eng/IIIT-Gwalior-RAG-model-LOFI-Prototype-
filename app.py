@@ -123,7 +123,13 @@ def main():
 
     # Sidebar Admin Panel
     st.sidebar.title("Admin Panel")
+    if "show_data" not in st.session_state:
+        st.session_state.show_data = False
+
     if st.sidebar.button("Show Feedback Data"):
+        st.session_state.show_data = True
+
+    if st.session_state.show_data:
         df = view_data()
         st.sidebar.dataframe(df)
 
@@ -229,6 +235,7 @@ def main():
                         log_feedback(mode, latency, speed, frustration, trust, age)
                         st.success("Feedback saved")
                         st.session_state.show_form = False
+                        st.session_state.show_data = True
                         st.rerun()
             # Save assistant message
             st.session_state.messages.append({
@@ -241,4 +248,5 @@ def main():
         
 if __name__ == "__main__":
      main()
+    
 
